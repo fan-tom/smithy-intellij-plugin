@@ -1,0 +1,189 @@
+// https://smithy.io/2.0/spec/selectors.html#grammar
+{
+    parserClass="software.amazon.smithy.selector.intellij.SmithySelectorParser"
+    parserUtilClass="com.intellij.lang.parser.GeneratedParserUtilBase"
+    extends="software.amazon.smithy.selector.intellij.psi.SmithySelectorPsiElement"
+    psiClassPrefix="SmithySelector"
+    psiImplClassSuffix="Impl"
+    psiPackage="software.amazon.smithy.selector.intellij.psi"
+    psiImplPackage="software.amazon.smithy.selector.intellij.psi.impl"
+    elementTypeHolderClass="software.amazon.smithy.selector.intellij.psi.SmithySelectorTypes"
+    elementTypeClass="software.amazon.smithy.selector.intellij.SmithySelectorElementType"
+    tokenTypeClass="software.amazon.smithy.selector.intellij.SmithySelectorTokenType"
+
+    // TODO reuse tokens from Smithy lang
+    tokens=[
+        TOKEN_LPAREN="("
+        TOKEN_RPAREN=")"
+        TOKEN_LBRACE="{"
+        TOKEN_RBRACE="}"
+        TOKEN_LBRACKET="["
+        TOKEN_RBRACKET="]"
+
+        TOKEN_STAR="*"
+        TOKEN_DOT="."
+        TOKEN_COMMA=","
+        TOKEN_GT=">"
+        TOKEN_LT="<"
+        TOKEN_EQ="="
+        TOKEN_DASH="-"
+        TOKEN_AMP="&"
+        TOKEN_CAP="^"
+        TOKEN_EXCL="!"
+        TOKEN_QUESTION_MARK="?"
+        TOKEN_HASH="#"
+        TOKEN_AT="@"
+        TOKEN_DOLLAR="$"
+        TOKEN_PIPE="|"
+        TOKEN_TILDA="~"
+        TOKEN_COLON=":"
+        TOKEN_QUOTE="'"
+        TOKEN_DQUOTE='"'
+        TOKEN_LETTER_I='i'
+
+        TOKEN_NUMBER="regexp:-?(0|([1-9][0-9]*))(\.[0-9]+)?(e[+-]?[0-9]+)?"
+        TOKEN_IDENTIFIER="regexp:((_+[A-Za-z0-9])|[A-Za-z])[A-Za-z0-9_]*"
+
+        TOKEN_SINGLE_QUOTED_CHAR="regexp:[\x20-\x26] | [\x28-\x5B] | [\x{00005D}-\x{10FFFF}]" // Excludes (')
+        TOKEN_DOUBLE_QUOTED_CHAR="regexp:[\x20-\x21] | [\x23-\x5B] | [\x{00005D}-\x{10FFFF}]" // Excludes (")
+    ]
+}
+
+root ::= Selector
+
+Selector ::=
+    SelectorExpression (SelectorExpression)*
+
+SelectorExpression ::=
+    SelectorShapeTypes
+  | SelectorAttr
+  | SelectorScopedAttr
+  | SelectorFunction
+  | SelectorForwardUndirectedNeighbor
+  | SelectorReverseUndirectedNeighbor
+  | SelectorForwardDirectedNeighbor
+  | SelectorForwardRecursiveNeighbor
+  | SelectorReverseDirectedNeighbor
+  | SelectorVariableSet
+  | SelectorVariableGet
+
+SelectorShapeTypes ::=
+    Star | Identifier
+
+SelectorForwardUndirectedNeighbor ::=
+    ">"
+
+SelectorReverseUndirectedNeighbor ::=
+    "<"
+
+SelectorForwardDirectedNeighbor ::=
+    "-""[" SelectorDirectedRelationships "]""->"
+
+SelectorReverseDirectedNeighbor ::=
+    "<-""[" SelectorDirectedRelationships "]""-"
+
+SelectorDirectedRelationships ::=
+    Identifier ("," Identifier)*
+
+SelectorForwardRecursiveNeighbor ::=
+    "~>"
+
+SelectorAttr ::=
+    "[" SelectorKey [SelectorAttrComparison] "]"
+
+SelectorAttrComparison ::=
+    SelectorComparator SelectorAttrValues ["i"]
+
+SelectorKey ::=
+    Identifier ["|" SelectorPath]
+
+SelectorPath ::=
+    SelectorPathSegment ("|" SelectorPathSegment)*
+
+SelectorPathSegment ::=
+    SelectorValue | SelectorFunctionProperty
+
+SelectorValue ::=
+    SelectorText | Number | RootShapeId
+
+SelectorFunctionProperty ::=
+    "(" Identifier ")"
+
+SelectorAttrValues ::=
+    SelectorValue ("," SelectorValue)*
+
+SelectorComparator ::=
+    SelectorStringComparator
+  | SelectorNumericComparator
+  | SelectorProjectionComparator
+
+SelectorStringComparator ::=
+    "^=" | "$=" | "*=" | "!=" | "=" | "?="
+
+SelectorNumericComparator ::=
+    ">=" | ">" | "<=" | "<"
+
+SelectorProjectionComparator ::=
+    "{=}" | "{!=}" | "{<}" | "{<<}"
+
+SelectorAbsoluteRootShapeId ::=
+    Namespace "#" Identifier
+
+SelectorScopedAttr ::=
+    "[" "@"[SelectorKey] ":" SelectorScopedAssertions "]"
+
+SelectorScopedAssertions ::=
+    SelectorScopedAssertion ("&&" SelectorScopedAssertion)*
+
+SelectorScopedAssertion ::=
+    SelectorScopedValue SelectorComparator SelectorScopedValues ["i"]
+
+SelectorScopedValue ::=
+    SelectorValue | SelectorContextValue
+
+SelectorContextValue ::=
+    "@" "{" SelectorPath "}"
+
+SelectorScopedValues ::=
+    SelectorScopedValue ("," SelectorScopedValue)*
+
+SelectorFunction ::=
+    ":" Identifier "(" SelectorFunctionArgs ")"
+
+SelectorFunctionArgs ::=
+    Selector ("," Selector)*
+
+SelectorText ::=
+    SelectorSingleQuotedText | SelectorDoubleQuotedText
+
+SelectorSingleQuotedText ::=
+    "'" TOKEN_SINGLE_QUOTED_CHAR+ "'"
+
+SelectorDoubleQuotedText ::=
+    '"' TOKEN_DOUBLE_QUOTED_CHAR+ '"'
+
+SelectorVariableSet ::=
+    "$" Identifier "(" Selector ")"
+
+SelectorVariableGet ::=
+    "$""{" Identifier "}"
+
+// artificial rules to have proper PSI nodes for meaningful literals
+Number ::=
+    TOKEN_NUMBER
+Star ::=
+    TOKEN_STAR
+    
+// extra rules
+
+Identifier ::=
+    TOKEN_IDENTIFIER
+
+Namespace ::=
+    Identifier ("." Identifier)*
+
+RootShapeId ::=
+    AbsoluteRootShapeId | Identifier
+
+AbsoluteRootShapeId ::=
+    Namespace "#" Identifier
